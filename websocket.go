@@ -39,8 +39,9 @@ type WSClient struct {
 	send chan *Req
 
 	msgType int
-}
 
+	params string
+}
 
 // serveWs handles websocket requests from the peer
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -50,7 +51,14 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &WSClient{hub: hub, conn: conn, send: make(chan *Req, 256)}
+	fmt.Println("get param", r.FormValue("filename"))
+
+	client := &WSClient{
+		hub:    hub,
+		conn:   conn,
+		send:   make(chan *Req, 256),
+		params: r.FormValue("filename"),
+	}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
@@ -73,7 +81,10 @@ func (c *WSClient) read() {
 
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(pongWait));
+		return nil
+	})
 
 	for {
 		msgType, data, err := c.conn.ReadMessage()
@@ -88,6 +99,8 @@ func (c *WSClient) read() {
 		c.hub.broadcast <- &Req{
 			MsgType: msgType,
 			Data:    data,
+			Params:  c.params,
+			Client:  c,
 		}
 	}
 }
@@ -107,6 +120,11 @@ func (c *WSClient) write() {
 	for {
 		select {
 		case msg, ok := <-c.send:
+			if !ok {
+				fmt.Println("write c.send close")
+				return
+			}
+
 			if msg == nil {
 				continue
 			}

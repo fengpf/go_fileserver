@@ -1,8 +1,11 @@
 package go_fileserver
 
 import (
-	"github.com/gorilla/websocket"
+	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type FileServer struct {
@@ -36,6 +39,8 @@ func (fs *FileServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type Req struct {
 	Data    []byte
 	MsgType int
+	Params  string
+	Client  *WSClient
 }
 
 // Hub maintains the set of active clients and broadcasts messages to the
@@ -76,20 +81,28 @@ func (h *Hub) Run() {
 			}
 
 		case msg := <-h.broadcast:
+			fmt.Println(h.wsClients)
 
+			if _, ok := h.wsClients[msg.Client]; !ok {
+				continue
+			}
 
 			switch msg.MsgType {
 			case websocket.TextMessage:
+				if msg.Client.params == msg.Params {
 
-			}
+					tmp := string(msg.Data)
+					tmp += "我处理了10秒钟~~~"
+					msg.Data = []byte(tmp)
 
-
-			for client := range h.wsClients {
-				select {
-				case client.send <- msg:
-				default:
-					close(client.send)
-					delete(h.wsClients, client)
+					time.Sleep(time.Second * 10) //假设业务处理
+					select {
+					case msg.Client.send <- msg:
+					default:
+						fmt.Println("c.send close 11")
+						close(msg.Client.send)
+						delete(h.wsClients, msg.Client)
+					}
 				}
 			}
 		}

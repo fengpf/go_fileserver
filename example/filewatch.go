@@ -51,37 +51,16 @@ func main() {
 	}
 }
 
-const homeHTML = `<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>WebSocket Example</title>
-    </head>
-    <body>
-        <pre id="fileData">{{.Data}}</pre>
-        <script type="text/javascript">
-            (function() {
-                var data = document.getElementById("fileData");
-                var conn = new WebSocket("ws://{{.Host}}/ws?lastMod={{.LastMod}}");
-                conn.onclose = function(evt) {
-                    data.textContent = 'Connection closed';
-                }
-                conn.onmessage = function(evt) {
-                    console.log('file updated');
-                    data.textContent = evt.data;
-                }
-            })();
-        </script>
-    </body>
-</html>
-`
-
-
 
 func reader(ws *websocket.Conn) {
 	defer ws.Close()
 	ws.SetReadLimit(512)
 	ws.SetReadDeadline(time.Now().Add(pongWait))
-	ws.SetPongHandler(func(string) error { ws.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(pongWait));
+		return nil
+	})
+
 	for {
 		_, _, err := ws.ReadMessage()
 		if err != nil {
@@ -193,3 +172,28 @@ func readFileIfModified(lastMod time.Time) ([]byte, time.Time, error) {
 	}
 	return p, fi.ModTime(), nil
 }
+
+
+const homeHTML = `<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>WebSocket Example</title>
+    </head>
+    <body>
+        <pre id="fileData">{{.Data}}</pre>
+        <script type="text/javascript">
+            (function() {
+                var data = document.getElementById("fileData");
+                var conn = new WebSocket("ws://{{.Host}}/ws?lastMod={{.LastMod}}");
+                conn.onclose = function(evt) {
+                    data.textContent = 'Connection closed';
+                }
+                conn.onmessage = function(evt) {
+                    console.log('file updated');
+                    data.textContent = evt.data;
+                }
+            })();
+        </script>
+    </body>
+</html>
+`

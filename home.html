@@ -9,7 +9,7 @@
 <form id="uriForm">
 
     <span style="color: #c41d3d;">地址栏：</span>
-    <input type="text" id="uri" value="ws://localhost:9000/ws" style="width: 200px;">
+    <input type="text" id="uri" value="ws://localhost:9000/ws?filename=" style="width: 200px;">
     <input type="submit" id="connect" value="Connect">
     <input type="button" id="disconnect" value="Disconnect" disabled="disabled">
 </form>
@@ -51,14 +51,19 @@
         }
     }
 
-    var conn = new WebSocket(uri.value);
+    var conn;
 
     document.getElementById("uriForm").onsubmit = function() {
-
+        conn = new WebSocket(uri.value);
 
         //连接成功建立后响应
         conn.onopen = function() {
-            console.log("成功连接到" + uri.value);
+            var succ="成功连接到" + uri.value
+            console.log(succ);
+            var item = document.createElement("div");
+            item.innerText = succ;
+            appendLog(item);
+
             uri.setAttribute("disabled", "disabled");
             connect.setAttribute("disabled", "disabled");
             disconnect.removeAttribute("disabled");
@@ -67,7 +72,7 @@
         //连接关闭后响应
         conn.onclose = function(evt) {
             console.log("关闭连接");
-            log.textContent = 'Connection closed';
+            log.textContent = '连接关闭';
 
             disconnect.setAttribute("disabled", "disabled");
             uri.removeAttribute("disabled");
@@ -78,12 +83,9 @@
         conn.onmessage = function(e) {
             console.log("收到服务器消息:" + e.data);
 
-            var messages = e.data.split('\n');
-            for (var i = 0; i < messages.length; i++) {
-                var item = document.createElement("div");
-                item.innerText = messages[i];
-                appendLog(item);
-            }
+            var item = document.createElement("div");
+            item.innerText = e.data;
+            appendLog(item);
 
         }
 
@@ -101,6 +103,7 @@
         }
         conn.send(msg.value);
 
+        uri = uri + "aa"
         console.log("我说:" + msg.value);
         msg.value = "";
         return false;
