@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"time"
 
@@ -24,14 +25,14 @@ var (
 func main() {
 	flag.Parse()
 
-	hub := go_fileserver.NewHub()
-	go hub.Run()
+	schedule := go_fileserver.NewSchedule()
+	go schedule.Run()
 
 	http.HandleFunc("/", serveHome)
 	http.HandleFunc("/csv/export/", export)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		go_fileserver.ServeWs(hub, w, r)
+		go_fileserver.ServeWs(schedule, w, r)
 	})
 
 	fmt.Println("file server start")

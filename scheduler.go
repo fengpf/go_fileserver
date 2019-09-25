@@ -43,47 +43,46 @@ type Req struct {
 	Client  *WSClient
 }
 
-// Hub maintains the set of active clients and broadcasts messages to the
-// clients.
-type Hub struct {
-	// Registered clients.
-	wsClients map[*WSClient]chan *Req
+//设置活跃的客户端连接，分发客户端请求
+type Schedule struct {
+	// 已经注册的客户端
+	wsClientsMap map[*WSClient]chan *Req
 
-	// Inbound messages from the clients.
-	broadcast chan *Req
+	// 分发客户端请求
+	dispatch chan *Req
 
-	// Register requests from the clients.
+	// 注册请求
 	register chan *WSClient
 
-	// Unregister requests from clients.
+	// 删除已注册请求
 	unregister chan *WSClient
 }
 
-func NewHub() *Hub {
-	return &Hub{
-		broadcast:  make(chan *Req),
+func NewSchedule() *Schedule{
+	return &Schedule{
+		dispatch:  make(chan *Req),
 		register:   make(chan *WSClient),
 		unregister: make(chan *WSClient),
-		wsClients:  make(map[*WSClient]chan *Req),
+		wsClientsMap:  make(map[*WSClient]chan *Req),
 	}
 }
 
-func (h *Hub) Run() {
+func (s *Schedule) Run() {
 	for {
 		select {
-		case client := <-h.register:
-			h.wsClients[client] = client.send
+		case client := <-s.register:
+			s.wsClientsMap[client] = client.send
 
-		case client := <-h.unregister:
-			if _, ok := h.wsClients[client]; ok {
-				delete(h.wsClients, client)
+		case client := <-s.unregister:
+			if _, ok := s.wsClientsMap[client]; ok {
+				delete(s.wsClientsMap, client)
 				close(client.send)
 			}
 
-		case msg := <-h.broadcast:
-			fmt.Println(h.wsClients)
+		case msg := <-s.dispatch:
+			fmt.Println(s.wsClientsMap)
 
-			if _, ok := h.wsClients[msg.Client]; !ok {
+			if _, ok := s.wsClientsMap[msg.Client]; !ok {
 				continue
 			}
 
@@ -99,9 +98,8 @@ func (h *Hub) Run() {
 					select {
 					case msg.Client.send <- msg:
 					default:
-						fmt.Println("c.send close 11")
 						close(msg.Client.send)
-						delete(h.wsClients, msg.Client)
+						delete(s.wsClientsMap, msg.Client)
 					}
 				}
 			}
